@@ -1,4 +1,18 @@
 --[[
+    =========================================
+               DARKLOGIC EXCLUSIVE
+    =========================================
+    [+] OWNER   : DarkLogic-de
+    [+] VERSION : 12.6
+    [+] THEME   : Electric Cyan
+    [+] STATUS  : Undetected
+    =========================================
+--]]
+
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+-- ... everything else stays below ...
+
     DarkLogic v12.6 - THE CREATOR UPDATE
     New: Reach (Melee/Combat), Streamer Mode (Panic Key), Owner Credits
 --]]
