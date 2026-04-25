@@ -100,5 +100,130 @@ local Pages = {
     Main = Instance.new("ScrollingFrame", ContentArea),
     Combat = Instance.new("ScrollingFrame", ContentArea),
     Troll = Instance.new("ScrollingFrame", ContentArea),
-    World = Instance.new("
-        
+    World = Instance.new("ScrollingFrame", ContentArea),
+    Settings = Instance.new("ScrollingFrame", ContentArea)
+}
+
+for _, p in pairs(Pages) do
+    p.Size = UDim2.new(1, 0, 1, 0); p.Visible = false; p.BackgroundTransparency = 1; p.ScrollBarThickness = 2
+    Instance.new("UIListLayout", p).Padding = UDim.new(0, 5)
+end
+Pages.Main.Visible = true
+
+local function AddTab(name, pos, page)
+    local btn = Instance.new("TextButton", Sidebar)
+    btn.Size = UDim2.new(0.9, 0, 0, 30); btn.Position = UDim2.new(0.05, 0, 0, pos)
+    btn.Text = name; btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamSemibold; Instance.new("UICorner", btn)
+    btn.MouseButton1Click:Connect(function()
+        for _, pg in pairs(Pages) do pg.Visible = false end
+        page.Visible = true
+    end)
+end
+
+local function AddToggle(text, page, callback)
+    local btn = Instance.new("TextButton", page)
+    btn.Size = UDim2.new(0.95, 0, 0, 38); btn.Text = text .. ": OFF"
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25); btn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    btn.Font = Enum.Font.Gotham; Instance.new("UICorner", btn)
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = text .. (active and ": ON" or ": OFF")
+        btn.TextColor3 = active and ACCENT or Color3.new(0.8, 0.8, 0.8)
+        callback(active)
+    end)
+end
+
+-- [ 3. TABS ]
+AddTab("MAIN", 10, Pages.Main)
+AddTab("COMBAT", 45, Pages.Combat)
+AddTab("TROLL", 80, Pages.Troll)
+AddTab("WORLD", 115, Pages.World)
+AddTab("INFO", 150, Pages.Settings)
+
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+AddToggle("Elite Speed (150)", Pages.Main, function(v) _G.fSpeed = v end)
+AddToggle("Click TP (Ctrl+Click)", Pages.Main, function(v) _G.clickTP = v end)
+AddToggle("Infinite Jump", Pages.Main, function(v) _G.infJump = v end)
+AddToggle("Noclip", Pages.Main, function(v) _G.noclip = v end)
+
+AddToggle("Silent Aim", Pages.Combat, function(v) _G.silentAim = v end)
+AddToggle("Mega Hitbox", Pages.Combat, function(v) _G.megaHit = v end)
+AddToggle("Player ESP", Pages.Combat, function(v) _G.esp = v end)
+
+AddToggle("Chat Spammer", Pages.Troll, function(v) _G.spammer = v end)
+AddToggle("Spinbot", Pages.Troll, function(v) _G.spin = v end)
+
+AddToggle("Anti-AFK", Pages.World, function(v) _G.antiAfk = v end)
+AddToggle("Fullbright", Pages.World, function(v) game.Lighting.Brightness = v and 2 or 1 end)
+
+local Credit = Instance.new("TextLabel", Pages.Settings)
+Credit.Size = UDim2.new(0.95, 0, 0, 80)
+Credit.Text = "⚡ OWNER: DarkLogic-de ⚡\nVersion: 12.8 (Elite)\nStatus: Undetected"
+Credit.TextColor3 = ACCENT
+Credit.BackgroundTransparency = 1
+Credit.Font = Enum.Font.GothamBold
+Credit.TextSize = 14
+
+-- [ 4. LOGIC ]
+RunService.Heartbeat:Connect(function()
+    local char = Player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        if _G.fSpeed then char.Humanoid.WalkSpeed = 150 else char.Humanoid.WalkSpeed = 16 end
+        if _G.spin then char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0) end
+        if _G.noclip then
+            for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end
+        end
+    end
+    
+    -- ESP & Hitbox Logic
+    for _, other in pairs(game.Players:GetPlayers()) do
+        if other ~= Player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
+            -- ESP
+            local existingEsp = other.Character:FindFirstChild("DL_ESP")
+            if _G.esp and not existingEsp then
+                local h = Instance.new("Highlight", other.Character)
+                h.Name = "DL_ESP"
+                h.FillColor = ACCENT
+            elseif not _G.esp and existingEsp then
+                existingEsp:Destroy()
+            end
+            -- Mega Hitbox
+            if _G.megaHit then
+                other.Character.Head.Size = Vector3.new(5, 5, 5)
+                other.Character.Head.Transparency = 0.5
+            else
+                other.Character.Head.Size = Vector3.new(1.2, 1.2, 1.2)
+                other.Character.Head.Transparency = 0
+            end
+        end
+    end
+end)
+
+-- Click TP Logic
+Mouse.Button1Down:Connect(function()
+    if _G.clickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        Player.Character.HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.p) + Vector3.new(0, 3, 0)
+    end
+end)
+
+-- Spammer Logic
+spawn(function()
+    while task.wait(2) do
+        if _G.spammer then
+            local msg = "DarkLogic v12.8 - Owner: DarkLogic-de"
+            if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+                if ch then ch:SendAsync(msg) end
+            else
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+            end
+        end
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function() if _G.infJump then Player.Character.Humanoid:ChangeState("Jumping") end end)
+
+print("DarkLogic v12.8 Loaded!")
