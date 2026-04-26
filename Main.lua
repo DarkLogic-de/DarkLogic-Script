@@ -3,7 +3,7 @@
                DARKLOGIC EXCLUSIVE
     =========================================
     [+] OWNER   : DarkLogic-de
-    [+] VERSION : 12.8 (Elite Edition)
+    [+] VERSION : 13.1 (Hotfix)
     [+] THEME   : Electric Cyan
     [+] STATUS  : Undetected
     =========================================
@@ -11,7 +11,7 @@
 
 local Player = game.Players.LocalPlayer
 local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "DarkLogic_v12_8"
+MainGui.Name = "DarkLogic_v13_1"
 MainGui.Parent = (gethui and gethui()) or (game:GetService("CoreGui")) or (Player:WaitForChild("PlayerGui"))
 MainGui.ResetOnSpawn = false
 
@@ -58,7 +58,7 @@ LoadFrame:TweenPosition(UDim2.new(0, 0, -1, 0), "Out", "Back", 0.6)
 task.wait(0.7)
 LoadFrame:Destroy()
 
--- [ 2. MAIN SCRIPT ]
+-- [ 2. MAIN SCRIPT & UI ]
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
@@ -75,6 +75,25 @@ ToggleBtn.TextColor3 = ACCENT
 ToggleBtn.Font = Enum.Font.GothamBlack
 Instance.new("UICorner", ToggleBtn)
 Instance.new("UIStroke", ToggleBtn).Color = ACCENT
+
+-- NEW: FLOATING SPEED BUTTON (MOBILE FRIENDLY)
+local QuickSpeedBtn = Instance.new("TextButton", MainGui)
+QuickSpeedBtn.Size = UDim2.new(0, 45, 0, 45)
+QuickSpeedBtn.Position = UDim2.new(0, 10, 0.5, 0)
+QuickSpeedBtn.Text = "⚡"
+QuickSpeedBtn.BackgroundColor3 = BG
+QuickSpeedBtn.TextColor3 = ACCENT
+QuickSpeedBtn.Font = Enum.Font.GothamBlack
+Instance.new("UICorner", QuickSpeedBtn)
+Instance.new("UIStroke", QuickSpeedBtn).Color = ACCENT
+
+local qsActive = false
+QuickSpeedBtn.MouseButton1Click:Connect(function()
+    qsActive = not qsActive
+    _G.fSpeed = qsActive
+    QuickSpeedBtn.BackgroundColor3 = qsActive and ACCENT or BG
+    QuickSpeedBtn.TextColor3 = qsActive and BG or ACCENT
+end)
 
 local MainFrame = Instance.new("Frame", MainGui)
 MainFrame.Size = UDim2.new(0, 520, 0, 400)
@@ -151,26 +170,41 @@ AddToggle("Noclip", Pages.Main, function(v) _G.noclip = v end)
 
 AddToggle("Silent Aim", Pages.Combat, function(v) _G.silentAim = v end)
 AddToggle("Mega Hitbox", Pages.Combat, function(v) _G.megaHit = v end)
+AddToggle("Melee Reach", Pages.Combat, function(v) _G.meleeReach = v end) -- NEW
 AddToggle("Player ESP", Pages.Combat, function(v) _G.esp = v end)
 
 AddToggle("Chat Spammer", Pages.Troll, function(v) _G.spammer = v end)
 AddToggle("Spinbot", Pages.Troll, function(v) _G.spin = v end)
 
 AddToggle("Anti-AFK", Pages.World, function(v) _G.antiAfk = v end)
+AddToggle("Chat Spy", Pages.World, function(v) _G.chatSpy = v end) -- NEW
 AddToggle("Fullbright", Pages.World, function(v) game.Lighting.Brightness = v and 2 or 1 end)
 
 local Credit = Instance.new("TextLabel", Pages.Settings)
 Credit.Size = UDim2.new(0.95, 0, 0, 80)
-Credit.Text = "⚡ OWNER: DarkLogic-de ⚡\nVersion: 12.8 (Elite)\nStatus: Undetected"
+Credit.Text = "⚡ OWNER: DarkLogic-de ⚡\nVersion: 13.1 (Hotfix)\nStatus: Undetected"
 Credit.TextColor3 = ACCENT
 Credit.BackgroundTransparency = 1
 Credit.Font = Enum.Font.GothamBold
 Credit.TextSize = 14
 
+-- SAFELY LOAD CHAT SPY
+pcall(function()
+    local events = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+    if events and events:FindFirstChild("OnMessageDoneFiltering") then
+        events.OnMessageDoneFiltering.OnClientEvent:Connect(function(data)
+            if _G.chatSpy and data.FromSpeaker ~= Player.Name then
+                print("[SPY] " .. data.FromSpeaker .. ": " .. data.Message)
+            end
+        end)
+    end
+end)
+
 -- [ 4. LOGIC ]
 RunService.Heartbeat:Connect(function()
     local char = Player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
+    -- Added extra safety checks to prevent crashes if character dies
+    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
         if _G.fSpeed then char.Humanoid.WalkSpeed = 150 else char.Humanoid.WalkSpeed = 16 end
         if _G.spin then char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0) end
         if _G.noclip then
@@ -178,7 +212,7 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
-    -- ESP & Hitbox Logic
+    -- ESP, Hitbox & Reach Logic
     for _, other in pairs(game.Players:GetPlayers()) do
         if other ~= Player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
             -- ESP
@@ -190,13 +224,27 @@ RunService.Heartbeat:Connect(function()
             elseif not _G.esp and existingEsp then
                 existingEsp:Destroy()
             end
+            
             -- Mega Hitbox
-            if _G.megaHit then
-                other.Character.Head.Size = Vector3.new(5, 5, 5)
-                other.Character.Head.Transparency = 0.5
-            else
-                other.Character.Head.Size = Vector3.new(1.2, 1.2, 1.2)
-                other.Character.Head.Transparency = 0
+            local head = other.Character:FindFirstChild("Head")
+            if head then
+                if _G.megaHit then
+                    head.Size = Vector3.new(5, 5, 5)
+                    head.Transparency = 0.5
+                else
+                    head.Size = Vector3.new(1.2, 1.2, 1.2)
+                    head.Transparency = 0
+                end
+            end
+
+            -- Melee Reach
+            if _G.meleeReach then
+                for _, part in pairs(other.Character:GetChildren()) do
+                    if part:IsA("BasePart") and (part.Name:find("Arm") or part.Name:find("Hand")) then
+                        part.Size = Vector3.new(5, 5, 5)
+                        part.Transparency = 0.8
+                    end
+                end
             end
         end
     end
@@ -204,26 +252,32 @@ end)
 
 -- Click TP Logic
 Mouse.Button1Down:Connect(function()
-    if _G.clickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+    if _G.clickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         Player.Character.HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.p) + Vector3.new(0, 3, 0)
     end
 end)
 
--- Spammer Logic
+-- Spammer Logic safely wrapped
 spawn(function()
     while task.wait(2) do
         if _G.spammer then
-            local msg = "DarkLogic v12.8 - Owner: DarkLogic-de"
+            local msg = "DarkLogic v13.1 - Owner: DarkLogic-de"
             if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
                 local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
                 if ch then ch:SendAsync(msg) end
             else
-                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+                pcall(function()
+                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+                end)
             end
         end
     end
 end)
 
-UserInputService.JumpRequest:Connect(function() if _G.infJump then Player.Character.Humanoid:ChangeState("Jumping") end end)
+UserInputService.JumpRequest:Connect(function() 
+    if _G.infJump and Player.Character and Player.Character:FindFirstChild("Humanoid") then 
+        Player.Character.Humanoid:ChangeState("Jumping") 
+    end 
+end)
 
-print("DarkLogic v12.8 Loaded!")
+print("DarkLogic v13.1 Hotfix Loaded!")
